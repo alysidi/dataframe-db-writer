@@ -118,9 +118,49 @@ touPeriod TEXT NULL,
 start BIGINT NULL
 );
 
-drop table pwrview;
+-- create hypertable with 1 day partitions ( default is 7 days )
+SELECT create_hypertable('pwrview', 'timestamp', chunk_time_interval => 86400);
 
-explain analyze select * from pwrview;
+-- add time function for intervals in epochs. default is to use timestampz
+CREATE OR REPLACE FUNCTION unix_now() returns BIGINT LANGUAGE SQL STABLE as $$ SELECT extract(epoch from now())::BIGINT $$;
 
-select * from pwrview;
+-- set timestamp to epoch
+SELECT set_integer_now_func('pwrview', 'unix_now');
 
+-- to avoid duplicates and fast lookups by device
+CREATE UNIQUE INDEX on pwrview (device_id, timestamp desc);
+
+-- continuous aggregate materialized view - 1 hour time bucket
+CREATE VIEW pwrview_1h
+   WITH (timescaledb.continuous, 
+         timescaledb.refresh_lag = '1800',
+         timescaledb.refresh_interval = '1800')
+   AS
+      SELECT 
+         time_bucket(BIGINT '3600', timestamp) AS hour,
+         device_id, 
+         sum(solar_energy_exportedToBattery_kWh),
+         avg(SoC)
+         FROM pwrview
+      GROUP BY hour, device_id;
+
+
+-- continuous aggregate materialized view - 1 day time bucket
+CREATE VIEW pwrview_1day
+   WITH (timescaledb.continuous, 
+         timescaledb.refresh_lag = '86400',
+         timescaledb.refresh_interval = '86400')
+   AS
+      SELECT 
+         time_bucket(BIGINT '86400', timestamp) AS day,
+         device_id, 
+         sum(solar_energy_exportedToBattery_kWh),
+         avg(SoC)
+         FROM pwrview
+      GROUP BY day, device_id;
+
+ select * from pwrview;
+ select to_timestamp(day), * from pwrview_1day;
+ select to_timestamp(hour), * from pwrview_1h;
+
+ delete from pwrview where timestamp>1591495200
