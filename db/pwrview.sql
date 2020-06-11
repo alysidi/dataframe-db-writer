@@ -118,6 +118,8 @@ touPeriod TEXT NULL,
 start BIGINT NULL
 );
 
+insert into pwrview(device_id, timestamp, SoC, solar_energy_exportedToBattery_kWh) values('device4',1288118412, 100, 100)
+
 -- create hypertable with 1 day partitions ( default is 7 days )
 SELECT create_hypertable('pwrview', 'timestamp', chunk_time_interval => 86400);
 
@@ -159,8 +161,16 @@ CREATE VIEW pwrview_1day
          FROM pwrview
       GROUP BY day, device_id;
 
- select * from pwrview;
+
+ select * from pwrview where device_id='device4';
  select to_timestamp(day), * from pwrview_1day;
- select to_timestamp(hour), * from pwrview_1h;
+ select to_timestamp(hour), * from pwrview_1h order by hour desc;
+
+ select * from pwrview_1day where device_id='device4';
+ select * from pwrview_1h where device_id='device4';
 
  delete from pwrview where timestamp>1591495200
+
+
+
+ 
