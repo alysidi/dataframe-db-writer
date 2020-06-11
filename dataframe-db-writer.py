@@ -15,9 +15,9 @@ param_dic = {
 
 conn = db.connect(param_dic)
 
-def bulk_load_to_timescaledb(filepath, conn, device_id):
+def bulk_load_to_timescaledb(file_path, conn, device_id):
 	# load json object
-	with open(filepath) as f:
+	with open(file_path) as f:
 	    d = json.load(f)
 
 	# put the data into a pandas df
@@ -34,7 +34,11 @@ def bulk_load_to_timescaledb(filepath, conn, device_id):
 	#df.to_csv('csv/5min_24hr_output.csv', index=False)
 
 if __name__ == "__main__":  	
-	path='json/beacon/000100120330/'
-	for dir in os.listdir(path):
-		filepath = path+dir+'/5-minute-24-hr.json'
-		bulk_load_to_timescaledb(filepath, conn, 'device4')
+
+	path='json/beacon/'
+	for beacon_dir in os.listdir(path):
+		beacon_path = path + beacon_dir + '/'
+		for time_dir in os.listdir(beacon_path):
+			file_path = beacon_path+time_dir+'/5-minute-24-hr.json'
+			print(file_path)
+			bulk_load_to_timescaledb(file_path, conn, beacon_dir)

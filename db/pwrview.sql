@@ -166,8 +166,8 @@ CREATE VIEW pwrview_1day
  select to_timestamp(day), * from pwrview_1day;
  select to_timestamp(hour), * from pwrview_1h order by hour desc;
 
- select * from pwrview_1day where device_id='device4';
- select * from pwrview_1h where device_id='device4';
+ select * from pwrview_1day where device_id='000100120330';
+ select * from pwrview_1h where device_id='000100120330';
 
  delete from pwrview where timestamp>1591495200
 
