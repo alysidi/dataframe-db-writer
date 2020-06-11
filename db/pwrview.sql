@@ -138,7 +138,7 @@ INSERT INTO pwrview(timestamp,device_id,SoC,solar_energy_exportedToBattery_kWh) 
    SELECT extract(epoch FROM time ), device_id, random()*100, random()*100
       FROM generate_series((NOW() + interval '1 day') - interval '6 hour',(NOW() + interval '1 day'), '1s') AS time
       CROSS JOIN LATERAL (
-         SELECT 'inverter' || host_id::text AS device_id 
+         SELECT 'beacon' || host_id::text AS device_id 
             FROM generate_series(0,9) AS host_id
       ) h
    );
@@ -147,7 +147,7 @@ INSERT INTO pwrview(timestamp,device_id,SoC,solar_energy_exportedToBattery_kWh) 
 -- continuous aggregate materialized view - 1 hour time bucket
 CREATE VIEW pwrview_1h
    WITH (timescaledb.continuous, 
-         timescaledb.refresh_lag = '1800',
+         timescaledb.refresh_lag = '7200',
          timescaledb.refresh_interval = '1800')
    AS
       SELECT 
@@ -162,7 +162,7 @@ CREATE VIEW pwrview_1h
 -- continuous aggregate materialized view - 1 day time bucket
 CREATE VIEW pwrview_1day
    WITH (timescaledb.continuous, 
-         timescaledb.refresh_lag = '86400',
+         timescaledb.refresh_lag = '172800',
          timescaledb.refresh_interval = '86400')
    AS
       SELECT 
@@ -172,18 +172,6 @@ CREATE VIEW pwrview_1day
          avg(SoC)
          FROM pwrview
       GROUP BY day, device_id;
-
--- continuous aggregate materialized view - 1 day time bucket with 2 min refresh interval
-CREATE VIEW pwrview_1d
-   WITH (timescaledb.continuous)
-   AS
-      SELECT 
-         time_bucket(BIGINT '3600', timestamp) AS hour,
-         device_id, 
-         sum(solar_energy_exportedToBattery_kWh),
-         avg(SoC)
-         FROM pwrview
-      GROUP BY hour, device_id;
 
 
 -- base queries
