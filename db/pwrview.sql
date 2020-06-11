@@ -118,7 +118,6 @@ touPeriod TEXT NULL,
 start BIGINT NULL
 );
 
-insert into pwrview(device_id, timestamp, SoC, solar_energy_exportedToBattery_kWh) values('device4',1288118412, 100, 100)
 
 -- create hypertable with 1 day partitions ( default is 7 days )
 SELECT create_hypertable('pwrview', 'timestamp', chunk_time_interval => 86400);
@@ -131,6 +130,19 @@ SELECT set_integer_now_func('pwrview', 'unix_now');
 
 -- to avoid duplicates and fast lookups by device
 CREATE UNIQUE INDEX on pwrview (device_id, timestamp desc);
+
+
+
+-- insert load test data
+INSERT INTO pwrview(timestamp,device_id,SoC,solar_energy_exportedToBattery_kWh) (
+   SELECT extract(epoch FROM time ), device_id, random()*100, random()*100
+      FROM generate_series((NOW() + interval '1 day') - interval '6 hour',(NOW() + interval '1 day'), '1s') AS time
+      CROSS JOIN LATERAL (
+         SELECT 'inverter' || host_id::text AS device_id 
+            FROM generate_series(0,9) AS host_id
+      ) h
+   );
+
 
 -- continuous aggregate materialized view - 1 hour time bucket
 CREATE VIEW pwrview_1h
@@ -161,16 +173,50 @@ CREATE VIEW pwrview_1day
          FROM pwrview
       GROUP BY day, device_id;
 
+-- continuous aggregate materialized view - 1 day time bucket with 2 min refresh interval
+CREATE VIEW pwrview_1d
+   WITH (timescaledb.continuous)
+   AS
+      SELECT 
+         time_bucket(BIGINT '3600', timestamp) AS hour,
+         device_id, 
+         sum(solar_energy_exportedToBattery_kWh),
+         avg(SoC)
+         FROM pwrview
+      GROUP BY hour, device_id;
 
- select * from pwrview where device_id='device4';
+
+-- base queries
+ 
+ insert into pwrview(device_id, timestamp, SoC, solar_energy_exportedToBattery_kWh) values('ALY3579',1591896851, 100, 100)
+
+ select count(*) from pwrview;
+
+ select to_timestamp(timestamp), * from pwrview where device_id='inverter0' order by timestamp asc limit 1000;
+
  select to_timestamp(day), * from pwrview_1day;
+
  select to_timestamp(hour), * from pwrview_1h order by hour desc;
 
- select * from pwrview_1day where device_id='000100120330';
- select * from pwrview_1h where device_id='000100120330';
+-- analyze queries
 
- delete from pwrview where timestamp>1591495200
+ explain analyze select * from pwrview where device_id='host0' and timestamp<1591318800 and timestamp>1591314800
 
+ select * from pwrview_1day where device_id='ALY3579';
+ select * from pwrview_1d where device_id='ALY3579';
+ select * from pwrview_1h where device_id='ALY3579';
+
+
+
+ select * from pwrview_1h where device_id='111100120330';
+
+ explain analyze select * from pwrview_1d where device_id='host0';
+
+ explain analyze select * from pwrview_1day where device_id='host0' and day>1591318800;
+
+select * from pwrview where device_id='111100120330' limit 10;
+
+REFRESH MATERIALIZED VIEW pwrview_1day;
 
 
  

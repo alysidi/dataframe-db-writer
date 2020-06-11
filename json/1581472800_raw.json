@@ -1,0 +1,35 @@
+{
+  "sensorId": "0001001200C1",
+  "record": [{
+    "timestamp": 1.5814728E9,
+    "channel": [{
+      "channelType": "NET",
+      "exportedEnergyWs": "2523407168",
+      "importedEnergyWs": "12284520384",
+      "realPowerW": 675,
+      "deviceType": "INVERTER",
+      "aggregateLevel": "AGGREGATED"
+    }, {
+      "channelType": "GENERATION",
+      "exportedEnergyWs": "6478045200",
+      "realPowerW": 0,
+      "deviceType": "SOLAR",
+      "aggregateLevel": "AGGREGATED"
+    }, {
+      "channelType": "CONSUMPTION",
+      "importedEnergyWs": "15014496496",
+      "realPowerW": 631,
+      "deviceType": "INVERTER",
+      "aggregateLevel": "AGGREGATED"
+    }, {
+      "channelType": "SUBMETER",
+      "exportedEnergyWs": "1105077088",
+      "importedEnergyWs": "1275649280",
+      "realPowerW": 0,
+      "deviceType": "BATTERY",
+      "aggregateLevel": "AGGREGATED",
+      "SoC": 80.3
+    }],
+    "sysMode": "SELF_SUPPLY"
+  }]
+}
