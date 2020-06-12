@@ -136,7 +136,7 @@ CREATE UNIQUE INDEX on pwrview (device_id, timestamp desc);
 -- insert load test data
 INSERT INTO pwrview(timestamp,device_id,SoC,solar_energy_exportedToBattery_kWh) (
    SELECT extract(epoch FROM time ), device_id, random()*100, random()*100
-      FROM generate_series((NOW() + interval '1 day') - interval '6 hour',(NOW() + interval '1 day'), '1s') AS time
+      FROM generate_series((NOW() - interval '5 day') - interval '6 hour',(NOW() - interval '5 day'), '1s') AS time
       CROSS JOIN LATERAL (
          SELECT 'beacon' || host_id::text AS device_id 
             FROM generate_series(0,9) AS host_id
@@ -147,7 +147,7 @@ INSERT INTO pwrview(timestamp,device_id,SoC,solar_energy_exportedToBattery_kWh) 
 -- continuous aggregate materialized view - 1 hour time bucket
 CREATE VIEW pwrview_1h
    WITH (timescaledb.continuous, 
-         timescaledb.refresh_lag = '7200',
+         timescaledb.refresh_lag = '3600',
          timescaledb.refresh_interval = '1800')
    AS
       SELECT 
@@ -162,7 +162,7 @@ CREATE VIEW pwrview_1h
 -- continuous aggregate materialized view - 1 day time bucket
 CREATE VIEW pwrview_1day
    WITH (timescaledb.continuous, 
-         timescaledb.refresh_lag = '172800',
+         timescaledb.refresh_lag = '86400',
          timescaledb.refresh_interval = '86400')
    AS
       SELECT 
@@ -173,38 +173,68 @@ CREATE VIEW pwrview_1day
          FROM pwrview
       GROUP BY day, device_id;
 
-
 -- base queries
  
- insert into pwrview(device_id, timestamp, SoC, solar_energy_exportedToBattery_kWh) values('ALY3579',1591896851, 100, 100)
+ insert into pwrview(device_id, timestamp, SoC, solar_energy_exportedToBattery_kWh) values('ZZZZZZ',1591939294, 100, 100)
 
  select count(*) from pwrview;
 
- select to_timestamp(timestamp), * from pwrview where device_id='inverter0' order by timestamp asc limit 1000;
+ select to_timestamp(timestamp), * from pwrview order by timestamp asc limit 1000;
 
- select to_timestamp(day), * from pwrview_1day;
+ select to_timestamp(hour), * from pwrview_1h order by hour asc;
 
- select to_timestamp(hour), * from pwrview_1h order by hour desc;
+ select to_timestamp(day), * from pwrview_1day order by day asc;
+
+ select * FROM hypertable_approximate_row_count('pwrview');
 
 -- analyze queries
 
- explain analyze select * from pwrview where device_id='host0' and timestamp<1591318800 and timestamp>1591314800
+ explain analyze select to_timestamp(timestamp),* from pwrview where device_id='beacon0' and timestamp<1591318800 and timestamp>1591314800
 
- select * from pwrview_1day where device_id='ALY3579';
- select * from pwrview_1d where device_id='ALY3579';
- select * from pwrview_1h where device_id='ALY3579';
+ explain analyze select * from pwrview_1day where device_id='AXE33333' and day < 1691920000 and day > 1490883200 order by day asc;
+
+ explain analyze select to_timestamp(hour),* from pwrview_1h where device_id='beacon0' and hour < 1691920000 and hour > 1390883200 order by hour asc;
+
+ explain analyze select to_timestamp(day),* from pwrview_1day where device_id='beacon0' order by day asc; 
 
 
 
- select * from pwrview_1h where device_id='111100120330';
+select to_timestamp(min(timestamp)), to_timestamp(max(timestamp)) from pwrview where device_id='beacon0';
 
- explain analyze select * from pwrview_1d where device_id='host0';
-
- explain analyze select * from pwrview_1day where device_id='host0' and day>1591318800;
-
-select * from pwrview where device_id='111100120330' limit 10;
-
+REFRESH MATERIALIZED VIEW pwrview_1h;
 REFRESH MATERIALIZED VIEW pwrview_1day;
 
 
- 
+-- Refresh Interval for Rollups
+ALTER VIEW pwrview_1day SET (
+  timescaledb.refresh_interval = '60'
+   )
+
+-- Change Materialization
+ALTER VIEW pwrview_1day SET (
+  timescaledb.materialized_only = true
+   )
+
+-- Data Rention 
+ALTER VIEW pwrview_1h SET (
+  timescaledb.materialized_only = false,
+     timescaledb.ignore_invalidation_older_than = 86400 )
+
+ALTER VIEW pwrview_1day SET (
+  timescaledb.materialized_only = false,
+  timescaledb.ignore_invalidation_older_than = 86400)
+
+SELECT drop_chunks(older_than => 1591660800, table_name => 'pwrview', cascade_to_materializations => FALSE);
+
+-- Compression
+
+ALTER TABLE pwrview SET (
+  timescaledb.compress,
+  timescaledb.compress_segmentby = 'device_id'
+);
+
+SELECT add_compress_chunks_policy('pwrview', 86400);
+
+SELECT compress_chunk( '_timescaledb_internal._hyper_11_848_chunk');
+
+
