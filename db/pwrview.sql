@@ -136,7 +136,7 @@ CREATE UNIQUE INDEX on pwrview (device_id, timestamp desc);
 -- insert load test data
 INSERT INTO pwrview(timestamp,device_id,SoC,solar_energy_exportedToBattery_kWh) (
    SELECT extract(epoch FROM time ), device_id, random()*100, random()*100
-      FROM generate_series((NOW() - interval '5 day') - interval '6 hour',(NOW() - interval '5 day'), '1s') AS time
+      FROM generate_series((NOW() - interval '9 day') - interval '6 hour',(NOW() - interval '9 day'), '1s') AS time
       CROSS JOIN LATERAL (
          SELECT 'beacon' || host_id::text AS device_id 
             FROM generate_series(0,9) AS host_id
@@ -189,14 +189,13 @@ CREATE VIEW pwrview_1day
 
 -- analyze queries
 
- explain analyze select to_timestamp(timestamp),* from pwrview where device_id='beacon0' and timestamp<1591318800 and timestamp>1591314800
+ explain analyze select to_timestamp(timestamp),* from pwrview where device_id='beacon0' and timestamp<1491318800 and timestamp>1691314800
 
- explain analyze select * from pwrview_1day where device_id='AXE33333' and day < 1691920000 and day > 1490883200 order by day asc;
+ explain analyze select * from pwrview_1day where device_id='beacon0' and day < 1691920000 and day > 1490883200 order by day asc;
 
  explain analyze select to_timestamp(hour),* from pwrview_1h where device_id='beacon0' and hour < 1691920000 and hour > 1390883200 order by hour asc;
 
  explain analyze select to_timestamp(day),* from pwrview_1day where device_id='beacon0' order by day asc; 
-
 
 
 select to_timestamp(min(timestamp)), to_timestamp(max(timestamp)) from pwrview where device_id='beacon0';
@@ -222,9 +221,23 @@ ALTER VIEW pwrview_1h SET (
 
 ALTER VIEW pwrview_1day SET (
   timescaledb.materialized_only = false,
-  timescaledb.ignore_invalidation_older_than = 86400)
+  timescaledb.ignore_invalidation_older_than = 604800)
 
-SELECT drop_chunks(older_than => 1591660800, table_name => 'pwrview', cascade_to_materializations => FALSE);
+-- Drop Chunks
+
+SELECT drop_chunks(older_than => 1591315200, table_name => 'pwrview', cascade_to_materializations => FALSE, verbose => true);
+
+SELECT add_drop_chunks_policy( 'pwrview', 604800, cascade_to_materializations => FALSE);
+
+SELECT alter_job_schedule(1030, schedule_interval => '60');
+
+SELECT * FROM timescaledb_information.drop_chunks_policies;
+
+
+-- Policy Stats
+
+SELECT * FROM timescaledb_information.policy_stats;
+
 
 -- Compression
 
@@ -237,4 +250,4 @@ SELECT add_compress_chunks_policy('pwrview', 86400);
 
 SELECT compress_chunk( '_timescaledb_internal._hyper_11_848_chunk');
 
-
+ select to_timestamp(timestamp) as t from pwrview where device_id='beacon0' GROUP BY t
