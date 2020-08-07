@@ -273,3 +273,4 @@ SELECT now(), hypertable_name, chunk_name, compression_status, uncompressed_tota
 
 -- get total size of table in bytes
 SELECT * FROM hypertable_relation_size('pwrview');
+SELECT * FROM chunk_relation_size('pwrview');
