@@ -225,7 +225,7 @@ ALTER VIEW pwrview_1day SET (
 
 -- Drop Chunks
 
-SELECT drop_chunks(older_than => 1591315200, table_name => 'pwrview', cascade_to_materializations => FALSE, verbose => true);
+SELECT drop_chunks(older_than => 1491315200, table_name => 'pwrview', cascade_to_materializations => FALSE, verbose => true);
 
 SELECT add_drop_chunks_policy( 'pwrview', 604800, cascade_to_materializations => FALSE);
 
@@ -250,4 +250,26 @@ SELECT add_compress_chunks_policy('pwrview', 86400);
 
 SELECT compress_chunk( '_timescaledb_internal._hyper_11_848_chunk');
 
- select to_timestamp(timestamp) as t from pwrview where device_id='beacon0' GROUP BY t
+SELECT to_timestamp(timestamp) as t from pwrview where device_id='beacon0' GROUP BY t
+
+
+-- Stats
+
+-- compression jobs
+SELECT bpcc.*,
+       SCHEMA_NAME,
+       TABLE_NAME
+FROM _timescaledb_config.bgw_policy_compress_chunks AS bpcc
+LEFT JOIN _timescaledb_catalog.hypertable ON (hypertable_id=id)
+
+-- list continuous aggregates
+SELECT now(), * FROM timescaledb_information.continuous_aggregate_stats;
+
+-- list continuous aggregates refresh intervals
+SELECT * FROM timescaledb_information.continuous_aggregates;
+
+-- view compressed tables
+SELECT now(), hypertable_name, chunk_name, compression_status, uncompressed_total_bytes, compressed_total_bytes from timescaledb_information.compressed_chunk_stats;
+
+-- get total size of table in bytes
+SELECT * FROM hypertable_relation_size('pwrview');
