@@ -12,7 +12,7 @@ param_dic = {
     "host"      : "tsdb-164cde20-generac-38fe.a.timescaledb.io",
     "database"  : "defaultdb",
     "user"      : "tsdbadmin",
-    "password"  : "sakeocmytuetzamt",
+    "password"  : "",
     "port"			: 12949
 }
 '''
