@@ -277,3 +277,8 @@ SELECT * FROM chunk_relation_size('pwrview');
 
 SELECT * FROM timescaledb_information.compressed_hypertable_stats;
 
+-- get continuous_aggregates stats
+SELECT view_name, refresh_lag, refresh_interval, max_interval_per_job,
+       ignore_invalidation_older_than, materialization_hypertable
+FROM timescaledb_information.continuous_aggregates;
+
